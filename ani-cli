@@ -433,13 +433,16 @@ token_cache_path="$HOME/.cache/anilist_token.json"
 get_anilist_token() {
     now=$(date +%s)
 
-    if [ -f "$token_cache_path" ]; then
-        token_exp=$(jq -r '.expires_at' "$token_cache_path")
-        if [ "$now" -lt "$token_exp" ]; then
-            export ANILIST_TOKEN=$(jq -r '.access_token' "$token_cache_path")
-            return
-        fi
-    fi
+    # Ensure AniList token is valid or fetched
+	if [ -z "$ANILIST_TOKEN" ]; then
+	    if [ -x "$HOME/bin/ani-cli-auth" ]; then
+	        ANILIST_TOKEN=$("$HOME/bin/ani-cli-auth")
+	        export ANILIST_TOKEN
+	    else
+	        echo "❌ ani-cli-auth script not found or not executable."
+	        exit 1
+	    fi
+	fi
 
     echo "🔐 Token missing or expired. Launching AniList OAuth in browser..."
 
