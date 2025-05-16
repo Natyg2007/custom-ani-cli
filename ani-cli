@@ -254,6 +254,43 @@ process_hist_entry() {
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
+link_with_anilist() {
+    ani_id="$1"
+    ani_title="$2"
+    cache_file="$HOME/.cache/ani-cli-anilist-ids.json"
+    mkdir -p "$(dirname "$cache_file")"
+
+    # If already cached, return
+    if [ -f "$cache_file" ]; then
+        media_id=$(jq -r --arg id "$ani_id" '.[$id]' "$cache_file")
+        [ "$media_id" != "null" ] && [ -n "$media_id" ] && return
+    fi
+
+    # Search AniList
+    anilist_response=$(curl -s -X POST https://graphql.anilist.co \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $ANILIST_TOKEN" \
+        -d "{\"query\":\"query (\$search: String) { Page(perPage: 5) { media(search: \$search, type: ANIME) { id title { romaji english native } }}}\",\"variables\":{\"search\":\"$ani_title\"}}")
+
+    matches=$(echo "$anilist_response" | jq -c '.data.Page.media[]')
+
+    [ -z "$matches" ] && echo "No AniList match for \"$ani_title\"" && return
+
+    selected=$(echo "$matches" | jq -r '[.id, .title.english, .title.romaji, .title.native] | @tsv' | \
+        awk -F'\t' '{print $1 "\t" ($2 != "null" ? $2 : $3) " / " $3}' | \
+        fzf --prompt="Select AniList match for \"$ani_title\": " --with-nth=2)
+
+    [ -z "$selected" ] && echo "No selection made." && return
+
+    media_id=$(echo "$selected" | cut -f1)
+
+    # Save to cache
+    tmp=$(mktemp)
+    jq --arg id "$ani_id" --argjson anilist_id "$media_id" '. + {($id): $anilist_id}' "$cache_file" > "$tmp" && mv "$tmp" "$cache_file"
+
+    echo "Linked: $ani_title → AniList ID $media_id"
+}
+
 update_history() {
     if grep -q -- "$id" "$histfile"; then
         sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
@@ -266,7 +303,9 @@ update_history() {
     mkdir -p "$(dirname "$media_id_cache_path")"
 
     anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
-    media_id=$(jq -r --arg title "$anime_name" '.[$title]' "$media_id_cache_path" 2>/dev/null)
+    link_with_anilist "$id" "$anime_name"
+    media_id=$(jq -r --arg id "$id" '.[$id]' "$media_id_cache_path" 2>/dev/null)
+
 
     if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
         media_id=$(curl -s -X POST https://graphql.anilist.co \
