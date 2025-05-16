@@ -262,6 +262,33 @@ update_history() {
         printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
+    media_id_cache_path="${HOME}/.cache/ani-cli-anilist-ids.json"
+    mkdir -p "$(dirname "$media_id_cache_path")"
+
+    anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
+    media_id=$(jq -r --arg title "$anime_name" '.[$title]' "$media_id_cache_path" 2>/dev/null)
+
+    if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
+        media_id=$(curl -s -X POST https://graphql.anilist.co \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $ANILIST_TOKEN" \
+            -d "{\"query\":\"query (\$search: String) { Media(search: \$search, type: ANIME) { id } }\",\"variables\":{\"search\":\"$anime_name\"}}" \
+            | jq '.data.Media.id')
+
+        if [ -n "$media_id" ] && [ "$media_id" != "null" ]; then
+            tmpfile=$(mktemp)
+            jq --arg title "$anime_name" --argjson id "$media_id" '. + {($title): $id}' "$media_id_cache_path" 2>/dev/null > "$tmpfile" && mv "$tmpfile" "$media_id_cache_path"
+        fi
+    fi
+
+    if [ -n "$media_id" ] && [ "$media_id" != "null" ]; then
+        curl -s -X POST https://graphql.anilist.co \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $ANILIST_TOKEN" \
+            -d "{\"query\":\"mutation (\$mediaId: Int, \$progress: Int) { SaveMediaListEntry(mediaId: \$mediaId, progress: \$progress) { id progress } }\",\"variables\":{\"mediaId\":$media_id,\"progress\":$ep_no}}"
+        echo "Synced AniList: $anime_name → Episode $ep_no"
+    fi
+
 }
 
 download() {
