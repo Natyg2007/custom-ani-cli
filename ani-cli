@@ -388,29 +388,12 @@ play_episode() {
 }
 
 play() {
-    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
-    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
-    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
-    [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
-    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
-    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
-    if [ "$line_count" != 1 ] || [ -n "$start" ]; then
-        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
-        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
-        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
-        [ -z "$range" ] && die "Invalid range!"
-        for i in $range; do
-            tput clear
-            ep_no=$i
-            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
-            play_episode
-        done
-    else
-        play_episode
-    fi
-    # moves up to stored position and deletes to end
+    [ -z "$ep_no" ] && die "No episode specified"
+    play_episode
+    # move cursor for fzf prompts
     [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
+
 
 # MAIN
 
