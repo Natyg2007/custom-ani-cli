@@ -277,7 +277,7 @@ link_with_anilist() {
     [ -z "$matches" ] && echo "No AniList match for \"$ani_title\"" && return
 
     selected=$(echo "$matches" | jq -r '[.id, .title.english, .title.romaji, .title.native] | @tsv' | \
-        awk -F'\t' '{print $1 "\t" ($2 != "null" ? $2 : $3) " / " $3}' | \
+        awk -F'\t' '{printf "%s\t%s | %s | ID: %s\n", $1, ($2 != "null" ? $2 : $3), $3, $1}'
         fzf --prompt="Select AniList match for \"$ani_title\": " --with-nth=2)
 
     [ -z "$selected" ] && echo "No selection made." && return
