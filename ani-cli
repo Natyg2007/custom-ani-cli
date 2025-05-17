@@ -254,43 +254,6 @@ process_hist_entry() {
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
-link_with_anilist() {
-    ani_id="$1"
-    ani_title="$2"
-    cache_file="$HOME/.cache/ani-cli-anilist-ids.json"
-    mkdir -p "$(dirname "$cache_file")"
-
-    # If already cached, return
-    if [ -f "$cache_file" ]; then
-        media_id=$(jq -r --arg id "$ani_id" '.[$id]' "$cache_file")
-        [ "$media_id" != "null" ] && [ -n "$media_id" ] && return
-    fi
-
-    # Search AniList
-    anilist_response=$(curl -s -X POST https://graphql.anilist.co \
-        -H "Content-Type: application/json" \
-        -H "Authorization: Bearer $ANILIST_TOKEN" \
-        -d "{\"query\":\"query (\$search: String) { Page(perPage: 5) { media(search: \$search, type: ANIME) { id title { romaji english native } }}}\",\"variables\":{\"search\":\"$ani_title\"}}")
-
-    matches=$(echo "$anilist_response" | jq -c '.data.Page.media[]')
-
-    [ -z "$matches" ] && echo "No AniList match for \"$ani_title\"" && return
-
-    selected=$(echo "$matches" | jq -r '[.id, .title.english, .title.romaji, .title.native] | @tsv' | \
-        awk -F'\t' '{printf "%s\t%s | %s | ID: %s\n", $1, ($2 != "null" ? $2 : $3), $3, $1}'
-        fzf --prompt="Select AniList match for \"$ani_title\": " --with-nth=2)
-
-    [ -z "$selected" ] && echo "No selection made." && return
-
-    media_id=$(echo "$selected" | cut -f1)
-
-    # Save to cache
-    tmp=$(mktemp)
-    jq --arg id "$ani_id" --argjson anilist_id "$media_id" '. + {($id): $anilist_id}' "$cache_file" > "$tmp" && mv "$tmp" "$cache_file"
-
-    echo "Linked: $ani_title → AniList ID $media_id"
-}
-
 update_history() {
     if grep -q -- "$id" "$histfile"; then
         sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
@@ -303,9 +266,7 @@ update_history() {
     mkdir -p "$(dirname "$media_id_cache_path")"
 
     anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
-    link_with_anilist "$id" "$anime_name"
-    media_id=$(jq -r --arg id "$id" '.[$id]' "$media_id_cache_path" 2>/dev/null)
-
+    media_id=$(jq -r --arg title "$anime_name" '.[$title]' "$media_id_cache_path" 2>/dev/null)
 
     if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
         media_id=$(curl -s -X POST https://graphql.anilist.co \
@@ -388,12 +349,29 @@ play_episode() {
 }
 
 play() {
-    [ -z "$ep_no" ] && die "No episode specified"
-    play_episode
-    # move cursor for fzf prompts
+    start=$(printf "%s" "$ep_no" | grep -Eo '^(-1|[0-9]+(\.[0-9]+)?)')
+    end=$(printf "%s" "$ep_no" | grep -Eo '(-1|[0-9]+(\.[0-9]+)?)$')
+    [ "$start" = "-1" ] && ep_no=$(printf "%s" "$ep_list" | tail -n1) && unset start
+    [ -z "$end" ] || [ "$end" = "$start" ] && unset start end
+    [ "$end" = "-1" ] && end=$(printf "%s" "$ep_list" | tail -n1)
+    line_count=$(printf "%s\n" "$ep_no" | wc -l | tr -d "[:space:]")
+    if [ "$line_count" != 1 ] || [ -n "$start" ]; then
+        [ -z "$start" ] && start=$(printf "%s\n" "$ep_no" | head -n1)
+        [ -z "$end" ] && end=$(printf "%s\n" "$ep_no" | tail -n1)
+        range=$(printf "%s\n" "$ep_list" | sed -nE "/^${start}\$/,/^${end}\$/p")
+        [ -z "$range" ] && die "Invalid range!"
+        for i in $range; do
+            tput clear
+            ep_no=$i
+            printf "\33[2K\r\033[1;34mPlaying episode %s...\033[0m\n" "$ep_no"
+            play_episode
+        done
+    else
+        play_episode
+    fi
+    # moves up to stored position and deletes to end
     [ "$player_function" != "debug" ] && [ "$player_function" != "download" ] && tput rc && tput ed
 }
-
 
 # MAIN
 
@@ -427,75 +405,6 @@ hist_dir="${ANI_CLI_HIST_DIR:-${XDG_STATE_HOME:-$HOME/.local/state}/ani-cli}"
 histfile="$hist_dir/ani-hsts"
 [ ! -f "$histfile" ] && : >"$histfile"
 search="${ANI_CLI_DEFAULT_SOURCE:-scrape}"
-
-token_cache_path="$HOME/.cache/anilist_token.json"
-
-get_anilist_token() {
-    now=$(date +%s)
-
-    # Ensure AniList token is valid or fetched
-	if [ -z "$ANILIST_TOKEN" ]; then
-	    if [ -x "$HOME/bin/ani-cli-auth" ]; then
-	        ANILIST_TOKEN=$("$HOME/bin/ani-cli-auth")
-	        export ANILIST_TOKEN
-	    else
-	        echo "❌ ani-cli-auth script not found or not executable."
-	        exit 1
-	    fi
-	fi
-
-    echo "🔐 Token missing or expired. Launching AniList OAuth in browser..."
-
-    code=$(python3 -c '
-import http.server, socketserver, webbrowser, urllib.parse, os
-port = 8765
-client_id = os.getenv("ANILIST_CLIENT_ID")
-client_secret = os.getenv("ANILIST_CLIENT_SECRET")
-redirect_uri = f"http://localhost:{port}"
-auth_url = f"https://anilist.co/api/v2/oauth/authorize?client_id={client_id}&redirect_uri={redirect_uri}&response_type=code"
-webbrowser.open(auth_url)
-
-class Handler(http.server.SimpleHTTPRequestHandler):
-    def do_GET(self):
-        query = urllib.parse.urlparse(self.path).query
-        code = urllib.parse.parse_qs(query).get("code", [""])[0]
-        self.send_response(200)
-        self.end_headers()
-        self.wfile.write(b"Authorization successful. You may close this window.")
-        print(code)
-
-with socketserver.TCPServer(("", port), Handler) as httpd:
-    httpd.handle_request()
-' 2>/dev/null)
-
-    [ -z "$code" ] && echo "❌ Authorization failed." && exit 1
-
-    token_response=$(curl -s -X POST https://anilist.co/api/v2/oauth/token \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"grant_type\": \"authorization_code\",
-            \"client_id\": \"$ANILIST_CLIENT_ID\",
-            \"client_secret\": \"$ANILIST_CLIENT_SECRET\",
-            \"redirect_uri\": \"http://localhost:8765\",
-            \"code\": \"$code\"
-        }")
-
-    access_token=$(echo "$token_response" | jq -r '.access_token')
-    expires_in=$(echo "$token_response" | jq -r '.expires_in')
-    expiry=$((now + expires_in))
-
-    if [ -z "$access_token" ] || [ "$access_token" = "null" ]; then
-        echo "❌ Failed to retrieve token."
-        exit 1
-    fi
-
-    mkdir -p "$(dirname "$token_cache_path")"
-    jq -n --arg token "$access_token" --argjson exp "$expiry" \
-        '{access_token: $token, expires_at: $exp}' > "$token_cache_path"
-
-    export ANILIST_TOKEN="$access_token"
-}
-
 
 while [ $# -gt 0 ]; do
     case "$1" in
