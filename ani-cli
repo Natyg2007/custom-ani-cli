@@ -1,4 +1,4 @@
-ƒ#!/bin/sh
+#!/bin/sh
 
 version_number="4.9.9"
 
@@ -317,9 +317,9 @@ update_history() {
     anime_name="$(resolve_anime_alias_json "$anime_name")"
 
 
-    media_id=$(jq -r --arg title "$anime_name" '.[$title]' "$media_id_cache_path" 2>/dev/null)
+media_id=$(jq -r --arg id "$id" '.[] | select(.hash == $id) | .anilist_id' "$media_id_cache_path")
 
-    if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
+if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
         media_id=$(curl -s -X POST https://graphql.anilist.co \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $ANILIST_TOKEN" \
