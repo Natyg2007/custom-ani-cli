@@ -77,8 +77,7 @@ def main():
         else:
             display = romaji
 
-        print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
-
+    
 
       #  if entry["watched"] == ep_total and status == "FINISHED":
        #     continue  # skip finished and completed
