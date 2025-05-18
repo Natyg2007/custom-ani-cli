@@ -254,6 +254,30 @@ process_hist_entry() {
     [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
 }
 
+# Map local aliases to official AniList titles
+resolve_anime_alias() {
+    anime="$1"
+    # Hardcoded aliases
+    case "$anime" in
+        "1P"|"OneP"|"OP") echo "One Piece" ;;
+        "HxH") echo "Hunter x Hunter" ;;
+        "MHA"|"BnHA") echo "My Hero Academia" ;;
+        "AOT"|"SnK") echo "Attack on Titan" ;;
+        # Add more aliases as needed
+        *) echo "$anime" ;;
+    esac
+}
+
+# Optionally, load aliases from a JSON config file (~/.config/ani-cli-aliases.json)
+resolve_anime_alias_json() {
+    anime="$1"
+    alias_file="${ANI_CLI_ALIAS_FILE:-$HOME/.config/ani-cli-aliases.json}"
+    if [ -f "$alias_file" ]; then
+        resolved=$(jq -r --arg alias "$anime" '.[$alias] // empty' "$alias_file" 2>/dev/null)
+        [ -n "$resolved" ] && echo "$resolved" && return
+    fi
+    echo "$anime"
+}
 update_history() {
     if grep -q -- "$id" "$histfile"; then
         sed -E "s|^[^	]+	${id}	[^	]+$|${ep_no}	${id}	${title}|" "$histfile" >"${histfile}.new"
