@@ -87,7 +87,17 @@ def main():
         seen_ids.add(entry["id"])
 
         # Try finding match by hash
-        item = next((c for c in cache_list if c.get("hash") == entry["id"]), None)
+        item = None
+        for candidate in cache_list:
+            if match_title(entry["raw_title"], candidate):
+                item = candidate
+                # Add raw_title to aliases if it's new
+                if "aliases" not in candidate:
+                    candidate["aliases"] = []
+                if entry["raw_title"] not in candidate["aliases"]:
+                    candidate["aliases"].append(entry["raw_title"])
+                    updated = True
+                break
 
         # Try matching by title if not found
         if not item:
