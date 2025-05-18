@@ -83,16 +83,19 @@ def main():
             if not ani:
                 continue
             item = {
-                "title": entry["raw_title"],
-                "romaji": ani.get("title", {}).get("romaji", ""),
-                "english": ani.get("title", {}).get("english", ""),
-                "anilist_id": ani.get("id")
-            }
+                    "title": entry["raw_title"],
+                    "romaji": ani.get("title", {}).get("romaji", ""),
+                    "english": ani.get("title", {}).get("english", ""),
+                    "anilist_id": ani.get("id"),
+                    "status": ani.get("status"),
+                    "episodes": ani.get("episodes")
+                }
+
             cache[entry["id"]] = item
             updated = True
 
         display_title = item["english"] if item["english"] and item["english"].lower() != item["romaji"].lower() else item["romaji"]
-        ep_total = ani.get("episodes") if 'ani' in locals() and ani else entry["total_eps"]
+        ep_total = item.get("episodes") or entry["total_eps"]
         print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
 
     if updated:
