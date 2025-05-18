@@ -249,10 +249,33 @@ episodes_list() {
 process_hist_entry() {
     ep_list=$(episodes_list "$id")
     latest_ep=$(printf "%s\n" "$ep_list" | tail -n1)
-    title=$(printf "%s\n" "$title" | sed "s|[0-9]\+ episodes|${latest_ep} episodes|")
     ep_no=$(printf "%s" "$ep_list" | sed -n "/^${ep_no}$/{n;p;}") 2>/dev/null
-    [ -n "$ep_no" ] && printf "%s\t%s - episode %s\n" "$id" "$title" "$ep_no"
+
+    # Get AniList media details
+    anime_data=$(curl -s -X POST https://graphql.anilist.co \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $ANILIST_TOKEN" \
+        -d "{\"query\":\"query (\$id: Int) { Media(id: \$id, type: ANIME) { title { romaji english } status } }\",\"variables\":{\"id\":$media_id}}")
+
+    romaji_title=$(printf "%s" "$anime_data" | jq -r '.data.Media.title.romaji')
+    english_title=$(printf "%s" "$anime_data" | jq -r '.data.Media.title.english')
+    status=$(printf "%s" "$anime_data" | jq -r '.data.Media.status')
+
+    # Format title
+    if [ "$english_title" = "$romaji_title" ] || [ -z "$english_title" ]; then
+        formatted_title="$romaji_title"
+    else
+        formatted_title="$english_title ($romaji_title)"
+    fi
+
+    # Remove if fully watched & status is FINISHED
+    if [ "$ep_no" = "$latest_ep" ] && [ "$status" = "FINISHED" ]; then
+        sed -i '' "/${id}/d" "$histfile"
+    else
+        printf "%s\t%s - episode %s/%s\n" "$id" "$formatted_title" "$ep_no" "$latest_ep"
+    fi
 }
+
 
 # Map local aliases to official AniList titles
 resolve_anime_alias() {
