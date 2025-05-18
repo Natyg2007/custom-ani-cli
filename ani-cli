@@ -309,7 +309,7 @@ update_history() {
         printf "%s\t%s\t%s\n" "$ep_no" "$id" "$title" >>"${histfile}.new"
     fi
     mv "${histfile}.new" "$histfile"
-    media_id_cache_path="${HOME}/.cache/ani-cli-anilist-ids.json"
+    media_id_cache_path="${HOME}/custom-ani-cli/hash-to-anilist.json"
     mkdir -p "$(dirname "$media_id_cache_path")"
 
     anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
