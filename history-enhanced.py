@@ -111,7 +111,10 @@ def main():
             cache_list.append(item)
             updated = True
 
-        display_title = item["english"] if item["english"] and item["english"].lower() != item["romaji"].lower() else item["romaji"]
+        romaji = item.get("romaji", "")
+        english = item.get("english", "")
+        display_title = english if english and english.lower() != romaji.lower() else romaji or item.get("title", "Unknown Title")
+
         ep_total = item.get("episodes") or entry["total_eps"]
         print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
 
