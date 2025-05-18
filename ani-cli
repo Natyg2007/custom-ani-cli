@@ -589,12 +589,25 @@ case "$search" in
         [ "$index" -eq "$index" ] 2>/dev/null && result=$(printf "%s" "$anime_list" | sed -n "${index}p")
         [ -z "$index" ] && result=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: ")
         [ -z "$result" ] && exit 1
-        title=$(printf "%s" "$result" | cut -f2)
-        allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
-        id=$(printf "%s" "$result" | cut -f1)
-        ep_list=$(episodes_list "$id")
-        [ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
-        [ -z "$ep_no" ] && exit 1
+
+	title=$(printf "%s" "$result" | cut -f2)
+	id=$(printf "%s" "$result" | cut -f1)
+	
+	# Extract base name, resolve aliases
+	anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
+	anime_name="$(resolve_anime_alias "$anime_name")"
+	anime_name="$(resolve_anime_alias_json "$anime_name")"
+	
+	# Add back episode info if available
+	episodes_info="$(echo "$title" | grep -o '([0-9]\+ episodes)')"
+	[ -n "$episodes_info" ] && title="$anime_name $episodes_info" || title="$anime_name"
+	
+	# Set display-safe title
+	allanime_title="$(printf "%s" "$anime_name" | tr -d '[:punct:]')"
+	
+	ep_list=$(episodes_list "$id")
+	[ -z "$ep_no" ] && ep_no=$(printf "%s" "$ep_list" | nth "Select episode: " "$multi_selection_flag")
+	[ -z "$ep_no" ] && exit 1
         ;;
 esac
 [ "$skip_intro" = 1 ] && mal_id="$(ani-skip -q "${skip_title:-${title}}")"
