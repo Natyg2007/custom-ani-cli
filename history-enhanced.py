@@ -51,6 +51,9 @@ def fetch_anilist_data(title):
         return response.json().get("data", {}).get("Media", {})
     return {}
 
+def normalize_title(title):
+    return re.sub(r'\W+', '', title or '').lower()
+
 def main():
     history = load_history()
     for entry in history:
@@ -62,14 +65,13 @@ def main():
         status = ani.get("status", "RELEASING")
         romaji = ani["title"].get("romaji", "").strip()
         english = ani["title"].get("english", "").strip()
-        
-        def normalize(s):
-        return re.sub(r'\W+', '', s or '').lower()
 
-        if english and normalize(english) != normalize(romaji):
-            display = english
+        if english and normalize_title(english) != normalize_title(romaji):
+            display = f"{english} ({romaji})"
         else:
-            display = romaji
+            display = english or romaji
+
+        print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
 
       #  if entry["watched"] == ep_total and status == "FINISHED":
        #     continue  # skip finished and completed
