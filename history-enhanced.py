@@ -66,20 +66,34 @@ def save_cache(cache):
     with open(CACHE_PATH, "w", encoding="utf-8") as f:
         json.dump(cache, f, indent=2)
 
+def match_title(raw_title, entry):
+    normalized = normalize_title(raw_title)
+    candidates = [
+        entry.get("romaji", ""),
+        entry.get("english", ""),
+        entry.get("title", "")
+    ] + entry.get("aliases", [])
+    return any(normalized == normalize_title(c) for c in candidates)
+
 def main():
     history = load_history()
     cache_list = load_cache()
-    cache = {entry["hash"]: entry for entry in cache_list}
     seen_ids = set()
     updated = False
 
     for entry in history:
-        hash_id = entry["id"]
-        if hash_id in seen_ids:
+        if entry["id"] in seen_ids:
             continue
-        seen_ids.add(hash_id)
+        seen_ids.add(entry["id"])
 
-        item = cache.get(hash_id)
+        # Try finding match by hash
+        item = next((c for c in cache_list if c.get("hash") == entry["id"]), None)
+
+        # Try matching by title if not found
+        if not item:
+            item = next((c for c in cache_list if match_title(entry["raw_title"], c)), None)
+
+        # If still not found, fetch from AniList
         if not item:
             ani = fetch_anilist_data(entry["raw_title"])
             if not ani:
@@ -91,21 +105,19 @@ def main():
                 "anilist_id": ani.get("id"),
                 "status": ani.get("status"),
                 "episodes": ani.get("episodes"),
-                "hash": hash_id
+                "hash": entry["id"],
+                "aliases": []
             }
-            cache[hash_id] = item
+            cache_list.append(item)
             updated = True
 
-        romaji = item.get("romaji", "")
-        english = item.get("english", "")
-        display_title = english if english and english.lower() != romaji.lower() else romaji or item.get("title", "Unknown Title")
-
+        display_title = item["english"] if item["english"] and item["english"].lower() != item["romaji"].lower() else item["romaji"]
         ep_total = item.get("episodes") or entry["total_eps"]
         print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
 
     if updated:
-        # Save as list back to JSON
-        save_cache(list(cache.values()))
+        save_cache(cache_list)
+
 
 
 if __name__ == "__main__":
