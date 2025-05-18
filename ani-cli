@@ -372,20 +372,20 @@ play_episode() {
             ;;
         mpv*)
             if [ "$no_detach" = 0 ]; then
-                nohup "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
+                nohup "$player_function" $skip_flag --force-media-title="${allanime_title} Episode ${ep_no}" "$episode" >/dev/null 2>&1 &
             else
-                "$player_function" $skip_flag --force-media-title="${allanime_title}Episode ${ep_no}" "$episode"
+                "$player_function" $skip_flag --force-media-title="${allanime_title} Episode ${ep_no}" "$episode"
                 mpv_exitcode=$?
                 [ "$exit_after_play" = 1 ] && exit "$mpv_exitcode"
             fi
             ;;
         android_mpv) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n is.xyz.mpv/.MPVActivity >/dev/null 2>&1 & ;;
-        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title}Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
-        *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title}Episode ${ep_no}" >/dev/null 2>&1 & ;;
-        download) "$player_function" "$episode" "${allanime_title}Episode ${ep_no}" ;;
+        android_vlc) nohup am start --user 0 -a android.intent.action.VIEW -d "$episode" -n org.videolan.vlc/org.videolan.vlc.gui.video.VideoPlayerActivity -e "title" "${allanime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        *iina*) nohup "$player_function" --no-stdin --keep-running --mpv-force-media-title="${allanime_title} Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        flatpak_mpv) flatpak run io.mpv.Mpv --force-media-title="${allanime_title} Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        vlc*) nohup "$player_function" --play-and-exit --meta-title="${allanime_title} Episode ${ep_no}" "$episode" >/dev/null 2>&1 & ;;
+        *yncpla*) nohup "$player_function" "$episode" -- --force-media-title="${allanime_title} Episode ${ep_no}" >/dev/null 2>&1 & ;;
+        download) "$player_function" "$episode" "${allanime_title} Episode ${ep_no}" ;;
         catt) nohup catt cast "$episode" >/dev/null 2>&1 & ;;
         iSH)
             printf "\e]8;;vlc://%s\a~~~~~~~~~~~~~~~~~~~~\n~ Tap to open VLC ~\n~~~~~~~~~~~~~~~~~~~~\e]8;;\a\n" "$episode"
