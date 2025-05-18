@@ -56,7 +56,13 @@ def normalize_title(title):
 
 def main():
     history = load_history()
+    seen_ids = set()
+
     for entry in history:
+        if entry["id"] in seen_ids:
+            continue  # skip duplicates
+        seen_ids.add(entry["id"])
+
         ani = fetch_anilist_data(entry["raw_title"])
         if not ani:
             continue
@@ -66,12 +72,13 @@ def main():
         romaji = ani["title"].get("romaji", "").strip()
         english = ani["title"].get("english", "").strip()
 
-        if english and english.strip().lower() != romaji.strip().lower():
-            display = english.strip()
+        if english and english.lower() != romaji.lower():
+            display = english
         else:
-            display = romaji.strip()
+            display = romaji
 
         print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
+
 
       #  if entry["watched"] == ep_total and status == "FINISHED":
        #     continue  # skip finished and completed
