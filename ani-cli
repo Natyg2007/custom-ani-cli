@@ -528,7 +528,7 @@ esac
 # searching
 case "$search" in
     history)
-        anime_list=$(python3 "$HOME/.config/ani-cli/history-enhanced.py")
+        anime_list=$(python3 "$HOME/custom-ani-cli/history-enhanced.py")
 
         [ -z "$anime_list" ] && die "No unwatched series in history!"
 
