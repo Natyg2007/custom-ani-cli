@@ -75,6 +75,7 @@ def match_title(raw_title, entry):
     ] + entry.get("aliases", [])
     return any(normalized == normalize_title(c) for c in candidates)
 
+
 def main():
     history = load_history()
     cache_list = load_cache()
@@ -123,7 +124,7 @@ def main():
 
         romaji = item.get("romaji", "")
         english = item.get("english", "")
-        display_title = english if english and english.lower() != romaji.lower() else romaji or item.get("title", "Unknown Title")
+        display_title = item.get("title", "Unknown Title")
 
         ep_total = item.get("episodes") or entry["total_eps"]
         print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
