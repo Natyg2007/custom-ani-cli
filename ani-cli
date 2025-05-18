@@ -317,14 +317,38 @@ update_history() {
     anime_name="$(resolve_anime_alias_json "$anime_name")"
 
 
+# Try hash-based lookup first (for -c)
 media_id=$(jq -r --arg id "$id" '.[] | select(.hash == $id) | .anilist_id' "$media_id_cache_path")
 
+# If not found, try searching the title in case of new entry
 if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
-        media_id=$(curl -s -X POST https://graphql.anilist.co \
+    media_id=$(curl -s -X POST https://graphql.anilist.co \
+        -H "Content-Type: application/json" \
+        -H "Authorization: Bearer $ANILIST_TOKEN" \
+        -d "{\"query\":\"query (\$search: String) { Media(search: \$search, type: ANIME) { id title { romaji english } } }\",\"variables\":{\"search\":\"$anime_name\"}}" \
+        | jq '.data.Media.id')
+
+    if [ -n "$media_id" ] && [ "$media_id" != "null" ]; then
+        # Fetch the full title info to add to the list format
+        romaji=$(curl -s -X POST https://graphql.anilist.co \
             -H "Content-Type: application/json" \
             -H "Authorization: Bearer $ANILIST_TOKEN" \
-            -d "{\"query\":\"query (\$search: String) { Media(search: \$search, type: ANIME) { id } }\",\"variables\":{\"search\":\"$anime_name\"}}" \
-            | jq '.data.Media.id')
+            -d "{\"query\":\"query (\$id: Int) { Media(id: \$id) { title { romaji english } } }\",\"variables\":{\"id\":$media_id}}" \
+            | jq -r '.data.Media.title.romaji')
+
+        english=$(curl -s -X POST https://graphql.anilist.co \
+            -H "Content-Type: application/json" \
+            -H "Authorization: Bearer $ANILIST_TOKEN" \
+            -d "{\"query\":\"query (\$id: Int) { Media(id: \$id) { title { romaji english } } }\",\"variables\":{\"id\":$media_id}}" \
+            | jq -r '.data.Media.title.english')
+
+        tmpfile=$(mktemp)
+        jq --arg title "$anime_name" --arg romaji "$romaji" --arg english "$english" --arg hash "$id" --argjson aid "$media_id" \
+            '. + [{"title": $title, "romaji": $romaji, "english": $english, "anilist_id": $aid, "hash": $hash, "aliases": []}]' \
+            "$media_id_cache_path" > "$tmpfile" && mv "$tmpfile" "$media_id_cache_path"
+    fi
+fi
+
 
         if [ -n "$media_id" ] && [ "$media_id" != "null" ]; then
             tmpfile=$(mktemp)
