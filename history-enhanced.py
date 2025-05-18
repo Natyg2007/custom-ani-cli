@@ -70,28 +70,30 @@ def main():
     history = load_history()
     cache_list = load_cache()
     cache = {entry["hash"]: entry for entry in cache_list}
-
+    seen_ids = set()
+    updated = False
 
     for entry in history:
-        if entry["id"] in seen_ids:
+        hash_id = entry["id"]
+        if hash_id in seen_ids:
             continue
-        seen_ids.add(entry["id"])
+        seen_ids.add(hash_id)
 
-        item = cache.get(entry["id"])
+        item = cache.get(hash_id)
         if not item:
             ani = fetch_anilist_data(entry["raw_title"])
             if not ani:
                 continue
             item = {
-                    "title": entry["raw_title"],
-                    "romaji": ani.get("title", {}).get("romaji", ""),
-                    "english": ani.get("title", {}).get("english", ""),
-                    "anilist_id": ani.get("id"),
-                    "status": ani.get("status"),
-                    "episodes": ani.get("episodes")
-                }
-
-            cache[entry["id"]] = item
+                "title": entry["raw_title"],
+                "romaji": ani.get("title", {}).get("romaji", ""),
+                "english": ani.get("title", {}).get("english", ""),
+                "anilist_id": ani.get("id"),
+                "status": ani.get("status"),
+                "episodes": ani.get("episodes"),
+                "hash": hash_id
+            }
+            cache[hash_id] = item
             updated = True
 
         display_title = item["english"] if item["english"] and item["english"].lower() != item["romaji"].lower() else item["romaji"]
@@ -99,8 +101,8 @@ def main():
         print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
 
     if updated:
-        save_cache(cache)
-
+        # Save as list back to JSON
+        save_cache(list(cache.values()))
 
 
 if __name__ == "__main__":
