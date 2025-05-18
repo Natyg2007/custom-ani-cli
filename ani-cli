@@ -290,6 +290,7 @@ update_history() {
     mkdir -p "$(dirname "$media_id_cache_path")"
 
     anime_name="$(echo "$title" | cut -d'(' -f1 | sed 's/ *$//')"
+    anime_name="$(resolve_anime_alias "$anime_name")"
     media_id=$(jq -r --arg title "$anime_name" '.[$title]' "$media_id_cache_path" 2>/dev/null)
 
     if [ "$media_id" = "null" ] || [ -z "$media_id" ]; then
