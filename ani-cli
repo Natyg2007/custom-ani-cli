@@ -269,11 +269,11 @@ process_hist_entry() {
     fi
 
     # Remove if fully watched & status is FINISHED
-    if [ "$ep_no" = "$latest_ep" ] && [ "$status" = "FINISHED" ]; then
-        sed -i '' "/${id}/d" "$histfile"
-    else
-        printf "%s\t%s - episode %s/%s\n" "$id" "$formatted_title" "$ep_no" "$latest_ep"
-    fi
+   # if [ "$ep_no" = "$latest_ep" ] && [ "$status" = "FINISHED" ]; then
+    #    sed -i '' "/${id}/d" "$histfile"
+   # else
+    #    printf "%s\t%s - episode %s/%s\n" "$id" "$formatted_title" "$ep_no" "$latest_ep"
+    #fi
 }
 
 
