@@ -354,7 +354,7 @@ update_history() {
             tmpfile=$(mktemp)
             jq --arg title "$anime_name" --argjson id "$media_id" '. + {($title): $id}' "$media_id_cache_path" 2>/dev/null > "$tmpfile" && mv "$tmpfile" "$media_id_cache_path"
         fi
-    fi
+    
 
     if [ -n "$media_id" ] && [ "$media_id" != "null" ]; then
         curl -s -X POST https://graphql.anilist.co \
