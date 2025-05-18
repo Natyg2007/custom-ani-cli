@@ -67,8 +67,8 @@ def main():
             display = romaji
         else:
             display = f"{english} ({romaji})"
-        if entry["watched"] == ep_total and status == "FINISHED":
-            continue  # skip finished and completed
+      #  if entry["watched"] == ep_total and status == "FINISHED":
+       #     continue  # skip finished and completed
         print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
 
 if __name__ == "__main__":
