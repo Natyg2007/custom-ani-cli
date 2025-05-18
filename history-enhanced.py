@@ -60,13 +60,13 @@ def main():
 
         ep_total = ani.get("episodes") or entry["total_eps"]
         status = ani.get("status", "RELEASING")
-        romaji = ani["title"].get("romaji", "")
-        english = ani["title"].get("english", "")
-        if not english or english == romaji:
+        romaji = ani["title"].get("romaji", "").strip()
+        english = ani["title"].get("english", "").strip()
+        
+        if not english or english.lower() == romaji.lower():
             display = romaji
         else:
             display = f"{english} ({romaji})"
-
         if entry["watched"] == ep_total and status == "FINISHED":
             continue  # skip finished and completed
         print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
