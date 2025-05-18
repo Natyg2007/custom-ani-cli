@@ -531,14 +531,22 @@ case "$search" in
         anime_list=$(python3 "$HOME/.config/ani-cli/history-enhanced.py")
 
         [ -z "$anime_list" ] && die "No unwatched series in history!"
-        [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
-        [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+
+        if [ -z "${index##*[!0-9]*}" ]; then
+            id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
+        else
+            id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
+        fi
+
         [ -z "$id" ] && exit 1
-        title=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed 's/ - episode.*//')
-        ep_list=$(episodes_list "$id")
-        ep_no=$(printf "%s" "$anime_list" | grep "$id" | cut -f2 | sed -nE 's/.*- episode (.+)$/\1/p')
+
+        selected_line=$(printf "%s" "$anime_list" | grep "^$id	")
+        title=$(printf "%s" "$selected_line" | cut -f2 | sed 's/ - episode.*//')
+        ep_no=$(printf "%s" "$selected_line" | cut -f2 | sed -nE 's/.*- episode ([0-9]+)\/[0-9]+$/\1/p')
         allanime_title="$(printf "%s" "$title" | cut -d'(' -f1 | tr -d '[:punct:]')"
+        ep_list=$(episodes_list "$id")
         ;;
+
     *)
         if [ "$use_external_menu" = "0" ]; then
             while [ -z "$query" ]; do
