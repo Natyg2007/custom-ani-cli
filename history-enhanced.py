@@ -54,34 +54,51 @@ def fetch_anilist_data(title):
 def normalize_title(title):
     return re.sub(r'\W+', '', title or '').lower()
 
+CACHE_PATH = os.path.expanduser("~/custom-ani-cli/hash-to-anilist.json")
+
+def load_cache():
+    if os.path.exists(CACHE_PATH):
+        with open(CACHE_PATH, "r", encoding="utf-8") as f:
+            return json.load(f)
+    return {}
+
+def save_cache(cache):
+    with open(CACHE_PATH, "w", encoding="utf-8") as f:
+        json.dump(cache, f, indent=2)
+
 def main():
     history = load_history()
+    cache = load_cache()
     seen_ids = set()
+    updated = False
 
     for entry in history:
         if entry["id"] in seen_ids:
-            continue  # skip duplicates
+            continue
         seen_ids.add(entry["id"])
 
-        ani = fetch_anilist_data(entry["raw_title"])
-        if not ani:
-            continue
+        item = cache.get(entry["id"])
+        if not item:
+            ani = fetch_anilist_data(entry["raw_title"])
+            if not ani:
+                continue
+            item = {
+                "title": entry["raw_title"],
+                "romaji": ani.get("title", {}).get("romaji", ""),
+                "english": ani.get("title", {}).get("english", ""),
+                "anilist_id": ani.get("id")
+            }
+            cache[entry["id"]] = item
+            updated = True
 
-        ep_total = ani.get("episodes") or entry["total_eps"]
-        status = ani.get("status", "RELEASING")
-        romaji = ani["title"].get("romaji", "").strip()
-        english = ani["title"].get("english", "").strip()
+        display_title = item["english"] if item["english"] and item["english"].lower() != item["romaji"].lower() else item["romaji"]
+        ep_total = ani.get("episodes") if 'ani' in locals() and ani else entry["total_eps"]
+        print(f"{entry['id']}\t{display_title} - episode {entry['watched']}/{ep_total}")
 
-        if english and english.lower() != romaji.lower():
-            display = english
-        else:
-            display = romaji
+    if updated:
+        save_cache(cache)
 
-    
 
-      #  if entry["watched"] == ep_total and status == "FINISHED":
-       #     continue  # skip finished and completed
-        print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
 
 if __name__ == "__main__":
     main()
