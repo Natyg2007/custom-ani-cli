@@ -63,10 +63,14 @@ def main():
         romaji = ani["title"].get("romaji", "").strip()
         english = ani["title"].get("english", "").strip()
         
-        if english and english.lower() != romaji.lower():
+        def normalize(s):
+        return re.sub(r'\W+', '', s or '').lower()
+
+        if english and normalize(english) != normalize(romaji):
             display = english
         else:
             display = romaji
+
       #  if entry["watched"] == ep_total and status == "FINISHED":
        #     continue  # skip finished and completed
         print(f"{entry['id']}\t{display} - episode {entry['watched']}/{ep_total}")
