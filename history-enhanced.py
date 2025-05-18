@@ -68,9 +68,9 @@ def save_cache(cache):
 
 def main():
     history = load_history()
-    cache = load_cache()
-    seen_ids = set()
-    updated = False
+    cache_list = load_cache()
+    cache = {entry["hash"]: entry for entry in cache_list}
+
 
     for entry in history:
         if entry["id"] in seen_ids:
