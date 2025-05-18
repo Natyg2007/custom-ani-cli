@@ -528,8 +528,8 @@ esac
 # searching
 case "$search" in
     history)
-        anime_list=$(while read -r ep_no id title; do process_hist_entry & done <"$histfile")
-        wait
+        anime_list=$(python3 "$HOME/.config/ani-cli/history-enhanced.py")
+
         [ -z "$anime_list" ] && die "No unwatched series in history!"
         [ -z "${index##*[!0-9]*}" ] && id=$(printf "%s" "$anime_list" | nl -w 2 | sed 's/^[[:space:]]//' | nth "Select anime: " | cut -f1)
         [ -z "${index##*[!0-9]*}" ] || id=$(printf "%s" "$anime_list" | sed -n "${index}p" | cut -f1)
